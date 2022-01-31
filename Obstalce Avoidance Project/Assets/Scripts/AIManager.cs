@@ -1,16 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
 
 public class AIManager : MonoBehaviour
 {
     // Variables
-    private Ray2D ray;
     private RaycastHit2D hitLeft, hitRight, hitUp, hitLeftUp, hitRightUp;
 
     [Header("Player Stats")]
     public float speed;
     public float collisionCounter;
+    public float repelForce;
 
     [Header("Reset Time")]
     public float waitTime;
@@ -22,14 +24,19 @@ public class AIManager : MonoBehaviour
     public float visibilityRangeUp, visibilityRangeSides;
     
     [Header("Target Location")]
-    public Vector2 targetLoc;
+    public Vector3 targetLoc;
     public bool canGenerateNewLoc;
     public Transform topBound, bottomBound, leftBound, rightBound;
+    public List<GameObject> obstacles;
+
+    //[Header("UI")]
+    //public TextMeshProUGUI collisionText;
 
     // Start is called before the first frame update
     void Start()
     {
         collisionCounter = 0;
+        //collisionText.text = "Collisions: " + collisionCounter;
         canGenerateNewLoc = true;
         targetLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
         WanderAI();
@@ -73,7 +80,7 @@ public class AIManager : MonoBehaviour
             debugLine.startColor = colorHit;
             debugLine.endColor = colorHit;
 
-            GenerateNewTargetLoc();
+            Move(hitUp);
         }
         else 
         {
@@ -82,12 +89,12 @@ public class AIManager : MonoBehaviour
             debugLine.endColor = colorNotHit;
         }
 
-        // Raycast hitUp
+        // Raycast hitLeft
         if (hitLeft)
         {
             Debug.DrawRay(transform.position, transform.TransformDirection(Vector2.left) *  visibilityRangeSides, Color.red);
 
-            GenerateNewTargetLoc();
+            Move(hitLeft);
         }
         else 
         {
@@ -99,7 +106,7 @@ public class AIManager : MonoBehaviour
         {
             Debug.DrawRay(transform.position, transform.TransformDirection(Vector2.right) *  visibilityRangeSides, Color.red);
 
-            GenerateNewTargetLoc();
+            Move(hitRight);
         }
         else 
         {
@@ -110,8 +117,7 @@ public class AIManager : MonoBehaviour
         if (hitLeftUp)
         {
             Debug.DrawRay(transform.position, (transform.TransformDirection(Vector2.left) + transform.TransformDirection(Vector2.up)) *  visibilityRangeSides, Color.red);
-
-            GenerateNewTargetLoc();
+            Move(hitLeftUp);
         }
         else 
         {
@@ -123,7 +129,7 @@ public class AIManager : MonoBehaviour
         {
             Debug.DrawRay(transform.position, (transform.TransformDirection(Vector2.right) + transform.TransformDirection(Vector2.up)) *  visibilityRangeSides, Color.red);
 
-            GenerateNewTargetLoc();
+            Move(hitRightUp);
         }
         else 
         {
@@ -133,10 +139,25 @@ public class AIManager : MonoBehaviour
 
     void GenerateNewTargetLoc()
     {
-        if (canGenerateNewLoc)
+        // Variables
+        Vector2 newLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
+        bool safe = false;
+
+        while (!safe)
         {
-            targetLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
-            waitTime = startTime;
+            for (int i = 0; i < obstacles.Count; i++)
+            {
+                if (Vector2.Distance(obstacles[i].transform.position, newLoc) < 1f)
+                {
+                    newLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
+                    safe = false;
+                    break;
+                }
+                else
+                {
+                    safe = true;
+                }
+            }
         }
     }
 
@@ -144,19 +165,55 @@ public class AIManager : MonoBehaviour
     {
         if (Vector2.Distance(transform.position, targetLoc) > 0.2f)
         {
-            transform.position = Vector2.MoveTowards(transform.position, targetLoc, speed * Time.deltaTime);
+            Move();
         }
         else
         {
-            targetLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
+            GenerateNewTargetLoc();
         }
+    }
+
+    // Move (no obstacles detected)
+    void Move()
+    {
+        // Variables
+        Vector2 direction = (targetLoc - transform.position).normalized;
+
+        // Move
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime);
+        Quaternion q = transform.rotation;
+        q.eulerAngles = new Vector3(q.eulerAngles.x, 0, q.eulerAngles.z);
+        transform.rotation = q;
+        transform.position += transform.forward * speed * Time.deltaTime;
+    }
+
+    // Move (obstalce(s) detected)
+    void Move(RaycastHit2D hit)
+    {
+        // Variables
+        Vector2 direction = (targetLoc - transform.position).normalized;
+
+        // Check for collision
+        if (hit)
+        {
+            direction += hit.normal * repelForce;
+        }
+
+        // Move
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime);
+        Quaternion q = transform.rotation;
+        q.eulerAngles = new Vector3(q.eulerAngles.x, 0, q.eulerAngles.z);
+        transform.rotation = q;
+        transform.position += transform.forward * speed * Time.deltaTime;
     }
 
     private void OnDrawGizmos() {
         Gizmos.color = Color.red;
         Gizmos.DrawSphere(new Vector3(targetLoc.x, targetLoc.y, 0), .5f);
     }
+
     private void OnCollisionEnter2D(Collision2D other) {
         collisionCounter++;
+        //collisionText.text = "Collisions: " + collisionCounter;
     }
 }
