@@ -50,7 +50,7 @@ public class ObstalceAvoidance : MonoBehaviour
         // Variables
         Vector3 origin = transform.position;
         Vector3 dest = obstacle.transform.position;
-        Vector3 direction = dest - origin;
+        Vector3 direction = (dest - origin).normalized;
 
         debugLine.enabled = true;
 
@@ -82,7 +82,9 @@ public class ObstalceAvoidance : MonoBehaviour
     void Move()
     {
         // Variables
-        Vector3 direction = (new Vector3(targetLoc.position.x, targetLoc.position.y, targetLoc.position.z) - transform.position).normalized;
+        Vector3 origin = transform.position;
+        Vector3 dest = targetLoc.transform.position;
+        Vector3 direction = (dest - origin).normalized;
 
         // Move
         transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime);
@@ -93,7 +95,9 @@ public class ObstalceAvoidance : MonoBehaviour
     void Move(RaycastHit hit)
     {
         // Variables
-        Vector3 direction = (new Vector3(targetLoc.position.x, targetLoc.position.y, targetLoc.position.z) - transform.position).normalized;
+        Vector3 origin = transform.position;
+        Vector3 dest = targetLoc.transform.position;
+        Vector3 direction = (dest - origin).normalized;
 
         // Repel object
         direction += hit.normal * repelForce; // Repel object
