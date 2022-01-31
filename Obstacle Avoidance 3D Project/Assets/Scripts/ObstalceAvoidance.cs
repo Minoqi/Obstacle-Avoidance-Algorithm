@@ -7,148 +7,68 @@ using UnityEngine.UI;
 public class ObstalceAvoidance : MonoBehaviour
 {
     // Variables
-    private RaycastHit hitLeft, hitRight, hitUp, hitLeftUp, hitRightUp;
-    private bool hitLeftBool, hitRightBool, hitUpBool, hitLeftUpBool, hitRightUpBool;
+    private RaycastHit obstacleHit;
+    private bool obstacleHitBool;
 
     [Header("Player Stats")]
     public float speed;
     public float collisionCounter;
     public float repelForce;
 
-    [Header("Visiblity Lines")]
+    [Header("Raycast")]
     public LineRenderer debugLine;
-    public Color colorHit, colorNotHit;
-    public float visibilityRangeUp, visibilityRangeSides;
+    public Color colorHit;
 
     [Header("Target Location")]
     public Transform targetLoc;
-    //public Transform topBound, bottomBound, leftBound, rightBound;
-    public List<GameObject> obstacles;
 
-    //[Header("UI")]
-    //public TextMeshProUGUI collisionText;
+    [Header("FOV")]
+    public GameObject fovObject;
+
+    [Header("UI")]
+    public TextMeshProUGUI collisionText;
 
     // Start is called before the first frame update
     void Start()
     {
+        GetComponent<Renderer>().material.color = Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f);
+
+        debugLine.enabled = false;
+
         collisionCounter = 0;
-        //collisionText.text = "Collisions: " + collisionCounter;
-        //targetLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
-        WanderAI();
+        collisionText.text = "Collisions: " + collisionCounter;
     }
 
     // Update is called once per frame
     void Update()
     {
-        VisibilityRange();
         WanderAI();
     }
 
-    void VisibilityRange()
-    {
-        // Raycasts
-        hitUpBool = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hitUp, visibilityRangeUp);
-        hitLeftBool = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.left), out hitLeft, visibilityRangeSides);
-        hitRightBool = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.right), out hitRight, visibilityRangeSides);
-        hitLeftUpBool = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.left) + transform.TransformDirection(Vector3.forward) / 2, out hitLeftUp, visibilityRangeSides);
-        hitRightUpBool = Physics.Raycast(transform.position, transform.TransformDirection(Vector3.right) + transform.TransformDirection(Vector3.forward) / 2, out hitRightUp, visibilityRangeSides);
-
-        // Line renderers
-        debugLine.SetPosition(0, transform.position);
-        debugLine.SetPosition(1, new Vector3(transform.position.x + visibilityRangeUp, transform.position.y, transform.position.z));
-        //debugLine.transform.rotation = this.transform.rotation;
-
-        // Check all raycasts
-        // Raycast hitUp
-        if (hitUpBool)
-        {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * visibilityRangeUp, Color.red);
-            debugLine.startColor = colorHit;
-            debugLine.endColor = colorHit;
-
-            Move(hitUpBool, hitUp);
-        }
-        else
-        {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * visibilityRangeUp, Color.green);
-            debugLine.startColor = colorNotHit;
-            debugLine.endColor = colorNotHit;
-        }
-
-        // Raycast hitLeft
-        if (hitLeftBool)
-        {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.left) * visibilityRangeSides, Color.red);
-
-            Move(hitLeftBool, hitLeft);
-        }
-        else
-        {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.left) * visibilityRangeSides, Color.green);
-        }
-
-        // Raycast hitRight
-        if (hitRightBool)
-        {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.right) * visibilityRangeSides, Color.red);
-
-            Move(hitRightBool, hitRight);
-        }
-        else
-        {
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.right) * visibilityRangeSides, Color.green);
-        }
-
-        // Raycast hitLeftUp
-        if (hitLeftUpBool)
-        {
-            Debug.DrawRay(transform.position, (transform.TransformDirection(Vector3.left) + transform.TransformDirection(Vector3.forward)) * visibilityRangeSides, Color.red);
-            Move(hitLeftUpBool, hitLeftUp);
-        }
-        else
-        {
-            Debug.DrawRay(transform.position, (transform.TransformDirection(Vector3.left) + transform.TransformDirection(Vector3.forward)) * visibilityRangeSides, Color.green);
-        }
-
-        // Raycast hitRightUp
-        if (hitRightUpBool)
-        {
-            Debug.DrawRay(transform.position, (transform.TransformDirection(Vector3.right) + transform.TransformDirection(Vector3.forward)) * visibilityRangeSides, Color.red);
-
-            Move(hitRightUpBool, hitRightUp);
-        }
-        else
-        {
-            Debug.DrawRay(transform.position, (transform.TransformDirection(Vector3.right) + transform.TransformDirection(Vector3.forward)) * visibilityRangeSides, Color.green);
-        }
-    }
-
-    /*void GenerateNewTargetLoc()
+    public void AvoidObstacle(GameObject obstacle)
     {
         // Variables
-        Vector2 newLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
-        bool safe = false;
+        Vector3 origin = transform.position;
+        Vector3 dest = obstacle.transform.position;
+        Vector3 direction = dest - origin;
 
-        if (obstacles.Count > 0)
+        debugLine.enabled = true;
+
+        obstacleHitBool = Physics.Raycast(transform.position, direction, out obstacleHit, fovObject.GetComponent<FOVTool>().distance);
+
+        if (obstacleHitBool)
         {
-            while (!safe)
-            {
-                for (int i = 0; i < obstacles.Count; i++)
-                {
-                    if (Vector2.Distance(obstacles[i].transform.position, newLoc) < 1f)
-                    {
-                        newLoc = new Vector2(Random.Range(leftBound.position.x, rightBound.position.x), Random.Range(bottomBound.position.y, topBound.position.y));
-                        safe = false;
-                        break;
-                    }
-                    else
-                    {
-                        safe = true;
-                    }
-                }
-            }
+            Move(obstacleHit);
+
+            Debug.DrawRay(transform.position, direction, Color.red);
+
+            // Line renderer
+            debugLine.startColor = colorHit;
+            debugLine.endColor = colorHit;
+            debugLine.SetPosition(0, origin);
+            debugLine.SetPosition(1, dest);
         }
-    }*/
+    }
 
     void WanderAI()
     {
@@ -170,25 +90,22 @@ public class ObstalceAvoidance : MonoBehaviour
     }
 
     // Move (obstalce(s) detected)
-    void Move(bool didHit, RaycastHit hit)
+    void Move(RaycastHit hit)
     {
         // Variables
         Vector3 direction = (new Vector3(targetLoc.position.x, targetLoc.position.y, targetLoc.position.z) - transform.position).normalized;
 
-        // Check for collision
-        if (didHit)
-        {
-            direction += hit.normal * repelForce;
-        }
+        // Repel object
+        direction += hit.normal * repelForce; // Repel object
 
         // Move
         transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime);
         transform.position += transform.forward * speed * Time.deltaTime;
     }
 
-    private void OnCollisionEnter2D(Collision2D other)
+    private void OnCollisionEnter(Collision other)
     {
         collisionCounter++;
-        //collisionText.text = "Collisions: " + collisionCounter;
+        collisionText.text = "Collisions: " + collisionCounter;
     }
 }
