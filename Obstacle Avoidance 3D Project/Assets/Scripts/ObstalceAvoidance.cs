@@ -8,11 +8,12 @@ public class ObstalceAvoidance : MonoBehaviour
 {
     // Variables
     private RaycastHit obstacleHit;
-    private bool obstacleHitBool;
+    public bool obstacleHitBool, alreadyMoving;
+    Vector3 origin, dest, direction;
 
     [Header("Player Stats")]
     public float speed;
-    public float collisionCounter;
+    public float rotateSpeed, collisionCounter;
     public float repelForce;
 
     [Header("Raycast")]
@@ -32,11 +33,17 @@ public class ObstalceAvoidance : MonoBehaviour
     void Start()
     {
         GetComponent<Renderer>().material.color = Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f);
+        targetLoc.GetComponent<Renderer>().material.color = GetComponent<Renderer>().material.color;
+
+        obstacleHitBool = false;
+        alreadyMoving = false;
 
         debugLine.enabled = false;
 
         collisionCounter = 0;
         collisionText.text = "Collisions: " + collisionCounter;
+
+        targetLoc.GetComponent<TargetManager>().GenerateNewLocation();
     }
 
     // Update is called once per frame
@@ -48,33 +55,34 @@ public class ObstalceAvoidance : MonoBehaviour
     public void AvoidObstacle(GameObject obstacle)
     {
         // Variables
-        Vector3 origin = transform.position;
-        Vector3 dest = obstacle.transform.position;
-        Vector3 direction = (dest - origin).normalized;
+        origin = transform.position;
+        dest = obstacle.transform.position;
+        direction = (dest - origin).normalized;
 
-        debugLine.enabled = true;
-
+        // Repel object
         obstacleHitBool = Physics.Raycast(transform.position, direction, out obstacleHit, fovObject.GetComponent<FOVTool>().distance);
+        direction += obstacleHit.normal * repelForce;
 
-        if (obstacleHitBool)
-        {
-            Move(obstacleHit);
+        // Debug
+        debugLine.enabled = true;
+        Debug.DrawRay(transform.position, direction, Color.red);
 
-            Debug.DrawRay(transform.position, direction, Color.red);
-
-            // Line renderer
-            debugLine.startColor = colorHit;
-            debugLine.endColor = colorHit;
-            debugLine.SetPosition(0, origin);
-            debugLine.SetPosition(1, dest);
-        }
+        // Line renderer
+        debugLine.startColor = colorHit;
+        debugLine.endColor = colorHit;
+        debugLine.SetPosition(0, origin);
+        debugLine.SetPosition(1, dest);
     }
 
     void WanderAI()
     {
-        if (Vector3.Distance(transform.position, new Vector3(targetLoc.position.x, targetLoc.position.y, targetLoc.position.z)) > 0.2f)
+        if (Vector3.Distance(transform.position, new Vector3(targetLoc.position.x, targetLoc.position.y, targetLoc.position.z)) > 2f)
         {
             Move();
+        }
+        else
+        {
+            targetLoc.GetComponent<TargetManager>().GenerateNewLocation();
         }
     }
 
@@ -82,29 +90,17 @@ public class ObstalceAvoidance : MonoBehaviour
     void Move()
     {
         // Variables
-        Vector3 origin = transform.position;
-        Vector3 dest = targetLoc.transform.position;
-        Vector3 direction = (dest - origin).normalized;
+        if (!obstacleHitBool) {
+            origin = transform.position;
+            dest = targetLoc.transform.position;
+            direction = (dest - origin).normalized;
+        }
 
         // Move
-        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), rotateSpeed * Time.deltaTime);
+        transform.eulerAngles = new Vector3(0, transform.eulerAngles.y, 0);
         transform.position += transform.forward * speed * Time.deltaTime;
-    }
-
-    // Move (obstalce(s) detected)
-    void Move(RaycastHit hit)
-    {
-        // Variables
-        Vector3 origin = transform.position;
-        Vector3 dest = targetLoc.transform.position;
-        Vector3 direction = (dest - origin).normalized;
-
-        // Repel object
-        direction += hit.normal * repelForce; // Repel object
-
-        // Move
-        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime);
-        transform.position += transform.forward * speed * Time.deltaTime;
+        transform.position = new Vector3(transform.position.x, 0, transform.position.z);
     }
 
     private void OnCollisionEnter(Collision other)

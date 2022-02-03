@@ -26,21 +26,28 @@ public class ObstacleManager : MonoBehaviour
     {
         if (waitTime > 0)
         {
+            if (changeDirection)
+            {
+                transform.Translate(Vector3.right * moveSpeed * Time.deltaTime);
+            }
+            else
+            {
+                transform.Translate(Vector3.left * moveSpeed * Time.deltaTime);
+            }
+
             waitTime -= Time.deltaTime;
-
-
-            if (!changeDirection) // move left
-            {
-                transform.position = new Vector3(transform.position.x * -moveSpeed * Time.deltaTime, transform.position.y, transform.position.z);
-            }
-            else // move right
-            {
-                transform.position = new Vector3(transform.position.x * moveSpeed * Time.deltaTime, transform.position.y, transform.position.z);
-            }
         }
         else
         {
-            changeDirection = true;
+            if (changeDirection)
+            {
+                changeDirection = false;
+            }
+            else
+            {
+                changeDirection = true;
+            }
+
             waitTime = moveTime;
         }
     }

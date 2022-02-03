@@ -136,5 +136,6 @@ public class FOVTool : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         player.GetComponent<ObstalceAvoidance>().debugLine.enabled = false;
+        player.GetComponent<ObstalceAvoidance>().obstacleHitBool = false;
     }
 }
